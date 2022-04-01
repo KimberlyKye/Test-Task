@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Linq;
+using System.Collections;
 using System.Diagnostics;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,7 +24,11 @@ namespace testtest
             {
                 reader = new StreamReader(path);
                 string text = await reader.ReadToEndAsync();
-                Console.WriteLine(text);
+                var words = SplitText(text);
+                foreach (string word in words)
+                {
+                    Console.WriteLine("{0}, ", word);
+                }
             }
             catch (FileNotFoundException ex)
             {
@@ -34,8 +41,25 @@ namespace testtest
 
             stopwatch.Stop();
             Console.WriteLine("{0} ms", stopwatch.ElapsedMilliseconds);
+
+            ArrayList SplitText(string text)
+            {
+                var words = new ArrayList();
+
+                string[] splittedWords = Regex.Split(text, @"[\r|\p{P}|\t|\s]");
+
+                foreach (string word in splittedWords)
+                {
+                    if (!String.IsNullOrEmpty(word))
+                        words.Add(word);
+                }
+
+                return words;
+            }
         }
 
      
     }
+
+      
 }
