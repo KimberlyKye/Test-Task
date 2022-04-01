@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
@@ -11,24 +12,34 @@ namespace testtest
 {
     class MainClass
     {
-        public static async Task Main(string[] args)
+        public static void Main(string[] args)
         {
+            Console.Write("Enter path of file: ");
+            var path = Console.ReadLine();
+
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-
-            string path = "in.put";
 
             StreamReader reader = null;
 
             try
             {
                 reader = new StreamReader(path);
-                string text = await reader.ReadToEndAsync();
+                var text = reader.ReadToEnd();
+
                 var words = SplitText(text);
-                foreach (string word in words)
-                {
-                    Console.WriteLine("{0}, ", word);
+
+                var tripletsTable = SearchTriplets(words);
+                
+                var sortedTripletsTable = from tripletPair in tripletsTable
+                                          orderby tripletPair.Value descending
+                                          select tripletPair;
+
+                var topTenOfTriplets = sortedTripletsTable.Take(10);
+                foreach (var tripletWithCount in topTenOfTriplets){
+                    Console.WriteLine($"Triplet \"{tripletWithCount.Key}\" is using {tripletWithCount.Value} times");
                 }
+                
             }
             catch (FileNotFoundException ex)
             {
@@ -40,26 +51,47 @@ namespace testtest
             }
 
             stopwatch.Stop();
-            Console.WriteLine("{0} ms", stopwatch.ElapsedMilliseconds);
+            Console.Write("\n The program's working time is {0} ms", stopwatch.ElapsedMilliseconds);
 
             ArrayList SplitText(string text)
             {
                 var words = new ArrayList();
 
-                string[] splittedWords = Regex.Split(text, @"[\r|\p{P}|\t|\s]");
+                var splittedWords = Regex.Split(text, @"[\r|\p{P}|\t|\s]");
 
-                foreach (string word in splittedWords)
+                foreach (var word in splittedWords)
                 {
-                    if (!String.IsNullOrEmpty(word))
+                    if (!String.IsNullOrEmpty(word) && word.Length > 2)
                         words.Add(word);
                 }
 
                 return words;
             }
+
+            Dictionary<string, int> SearchTriplets(ArrayList words)
+            {
+                var tripletsTable = new Dictionary<string, int>();
+                string triplet = "";
+
+                foreach (string word in words)
+                {
+                    for (int position = 0; position < (word.Length - 2); position++)
+                    {
+                        triplet = word.Substring(position, 3);
+
+                        if (!tripletsTable.ContainsKey(triplet))
+                        {
+                            tripletsTable.Add(triplet, 1);
+                        }
+                        else
+                        {
+                            tripletsTable[triplet] = ++tripletsTable[triplet];
+                        }
+
+                    }
+                }
+                return tripletsTable;
+            }
         }
-
-     
     }
-
-      
 }
