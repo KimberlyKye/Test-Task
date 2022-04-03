@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Linq;
 using System.Collections;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace testtest
 {
@@ -57,7 +55,7 @@ namespace testtest
             {
                 var words = new ArrayList();
 
-                var splittedWords = Regex.Split(text, @"[\r|\p{P}|\t|\s]");
+                var splittedWords = Regex.Split(text, @"[\r|\t|\p{P}|\p{S}|\p{Z}]");
 
                 foreach (var word in splittedWords)
                 {
@@ -68,26 +66,18 @@ namespace testtest
                 return words;
             }
 
-            Dictionary<string, int> SearchTriplets(ArrayList words)
+            ConcurrentDictionary<string, int> SearchTriplets(ArrayList words)
             {
-                var tripletsTable = new Dictionary<string, int>();
+                var tripletsTable = new ConcurrentDictionary<string, int>();
+
                 string triplet = "";
 
                 foreach (string word in words)
                 {
                     for (int position = 0; position < (word.Length - 2); position++)
                     {
-                        triplet = word.Substring(position, 3);
-
-                        if (!tripletsTable.ContainsKey(triplet))
-                        {
-                            tripletsTable.Add(triplet, 1);
-                        }
-                        else
-                        {
-                            tripletsTable[triplet] = ++tripletsTable[triplet];
-                        }
-
+                        triplet = word.Substring(position, 3);                     
+                        tripletsTable.AddOrUpdate(triplet, 1, (key, oldValue) => oldValue + 1);
                     }
                 }
                 return tripletsTable;
