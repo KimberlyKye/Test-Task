@@ -25,9 +25,9 @@ namespace testtest
                 reader = new StreamReader(path);
                 var text = reader.ReadToEnd();
 
-                var words = SplitText(text);
+                TripletsProcessing tripletsProcessing = new TripletsProcessing();
 
-                var tripletsTable = SearchTriplets(words);
+                var tripletsTable = tripletsProcessing.SearchTriplets(text);
                 
                 var sortedTripletsTable = from tripletPair in tripletsTable
                                           orderby tripletPair.Value descending
@@ -51,7 +51,13 @@ namespace testtest
             stopwatch.Stop();
             Console.Write("\n The program's working time is {0} ms", stopwatch.ElapsedMilliseconds);
 
-            ArrayList SplitText(string text)
+            
+        }
+
+        class TripletsProcessing
+        {
+
+            public ArrayList SplitText(string text)
             {
                 var words = new ArrayList();
 
@@ -66,17 +72,19 @@ namespace testtest
                 return words;
             }
 
-            ConcurrentDictionary<string, int> SearchTriplets(ArrayList words)
+            public ConcurrentDictionary<string, int> SearchTriplets(string text)
             {
                 var tripletsTable = new ConcurrentDictionary<string, int>();
 
                 string triplet = "";
 
+                var words = SplitText(text);
+
                 foreach (string word in words)
                 {
                     for (int position = 0; position < (word.Length - 2); position++)
                     {
-                        triplet = word.Substring(position, 3);                     
+                        triplet = word.Substring(position, 3);
                         tripletsTable.AddOrUpdate(triplet, 1, (key, oldValue) => oldValue + 1);
                     }
                 }
