@@ -5,6 +5,8 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading;
+
 
 namespace testtest
 {
@@ -27,7 +29,9 @@ namespace testtest
 
                 TripletsProcessing tripletsProcessing = new TripletsProcessing();
 
-                var tripletsTable = tripletsProcessing.SearchTriplets(text);
+                var (wordsFirstHalf, wordsSecondHalf) = tripletsProcessing.SplitText(text);
+
+                var tripletsTable = tripletsProcessing.SearchTriplets(wordsFirstHalf, wordsSecondHalf);
                 
                 var sortedTripletsTable = from tripletPair in tripletsTable
                                           orderby tripletPair.Value descending
@@ -57,30 +61,66 @@ namespace testtest
         class TripletsProcessing
         {
 
-            public ArrayList SplitText(string text)
+            public ( ArrayList, ArrayList ) SplitText(string text)
             {
-                var words = new ArrayList();
+                var wordsFirstHalf = new ArrayList();
+                var wordsSecondHalf = new ArrayList();
+
 
                 var splittedWords = Regex.Split(text, @"[\r|\t|\p{P}|\p{S}|\p{Z}]");
 
-                foreach (var word in splittedWords)
+                var splittedWordsFirstHalf = new string[splittedWords.Length / 2] ;
+
+                for (var countWords = 1; countWords < splittedWords.Length / 2; countWords++)
                 {
-                    if (!String.IsNullOrEmpty(word) && word.Length > 2)
-                        words.Add(word);
+                    splittedWordsFirstHalf[countWords] = splittedWords[countWords];
                 }
 
-                return words;
+                var splittedWordsSecondHalf = new string[splittedWords.Length / 2 + 1];
+
+                for (var countWords = splittedWords.Length / 2; countWords < splittedWords.Length; countWords++)
+                {
+                    splittedWordsSecondHalf[countWords - splittedWords.Length / 2] = splittedWords[countWords];
+                }
+
+
+                foreach (var word in splittedWordsFirstHalf)
+                {
+                    if (!String.IsNullOrEmpty(word) && word.Length > 2)
+                        wordsFirstHalf.Add(word);
+                }
+
+                foreach (var word in splittedWordsSecondHalf)
+                {
+                    if (!String.IsNullOrEmpty(word) && word.Length > 2)
+                        wordsSecondHalf.Add(word);
+                }
+
+                return (wordsFirstHalf, wordsSecondHalf);
             }
 
-            public ConcurrentDictionary<string, int> SearchTriplets(string text)
+            public ConcurrentDictionary<string, int> SearchTriplets(ArrayList wordsFirstHalf, ArrayList wordsSecondHalf)
             {
                 var tripletsTable = new ConcurrentDictionary<string, int>();
 
                 string triplet = "";
 
-                var words = SplitText(text);
+                Thread myThread = new Thread(AddingWordsInSecondThread);
+                myThread.Start();
 
-                foreach (string word in words)
+                void AddingWordsInSecondThread()
+                {
+                    foreach (string word in wordsFirstHalf)
+                    {
+                        for (int position = 0; position < (word.Length - 2); position++)
+                        {
+                            triplet = word.Substring(position, 3);
+                            tripletsTable.AddOrUpdate(triplet, 1, (key, oldValue) => oldValue + 1);
+                        }
+                    }
+                }
+
+                foreach (string word in wordsSecondHalf)
                 {
                     for (int position = 0; position < (word.Length - 2); position++)
                     {
@@ -88,6 +128,7 @@ namespace testtest
                         tripletsTable.AddOrUpdate(triplet, 1, (key, oldValue) => oldValue + 1);
                     }
                 }
+
                 return tripletsTable;
             }
         }
