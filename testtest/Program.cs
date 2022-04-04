@@ -50,7 +50,7 @@ namespace testtest
                                           orderby tripletPair.Value descending
                                           select tripletPair;
 
-                var topTenOfTriplets = sortedTripletsTable.Take(100);
+                var topTenOfTriplets = sortedTripletsTable.Take(10);
                 foreach (var tripletWithCount in topTenOfTriplets)
                 {
                     Console.WriteLine($"Triplet \"{tripletWithCount.Key}\" is using {tripletWithCount.Value} times");
