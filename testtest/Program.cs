@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Collections;
+using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
@@ -28,20 +29,34 @@ namespace testtest
                 var text = reader.ReadToEnd();
 
                 TripletsProcessing tripletsProcessing = new TripletsProcessing();
+                var tripletsTable = new ConcurrentDictionary<string, int>();
 
-                var (wordsFirstHalf, wordsSecondHalf) = tripletsProcessing.SplitText(text);
+                var words = tripletsProcessing.SplitText(text);
+                var wordsFirstHalf = words.Take(words.Count / 2);
+                var wordsSecondHalf = words.Skip(words.Count / 2).Take(words.Count / 2);
 
-                var tripletsTable = tripletsProcessing.SearchTriplets(wordsFirstHalf, wordsSecondHalf);
-                
+
+                tripletsProcessing.SearchTriplets(wordsFirstHalf, ref tripletsTable);
+
+                Thread secondThreadForSearchingTriplets = new Thread(AddingWordsInSecondThread);
+                secondThreadForSearchingTriplets.Start();
+
+                void AddingWordsInSecondThread()
+                {
+                    tripletsProcessing.SearchTriplets(wordsSecondHalf, ref tripletsTable);
+                };
+
                 var sortedTripletsTable = from tripletPair in tripletsTable
                                           orderby tripletPair.Value descending
                                           select tripletPair;
 
-                var topTenOfTriplets = sortedTripletsTable.Take(10);
-                foreach (var tripletWithCount in topTenOfTriplets){
+                var topTenOfTriplets = sortedTripletsTable.Take(100);
+                foreach (var tripletWithCount in topTenOfTriplets)
+                {
                     Console.WriteLine($"Triplet \"{tripletWithCount.Key}\" is using {tripletWithCount.Value} times");
                 }
-                
+
+
             }
             catch (FileNotFoundException ex)
             {
@@ -55,72 +70,32 @@ namespace testtest
             stopwatch.Stop();
             Console.Write("\n The program's working time is {0} ms", stopwatch.ElapsedMilliseconds);
 
-            
+
         }
 
         class TripletsProcessing
         {
 
-            public ( ArrayList, ArrayList ) SplitText(string text)
+            public List<string> SplitText(string text)
             {
-                var wordsFirstHalf = new ArrayList();
-                var wordsSecondHalf = new ArrayList();
+                var words = new List<string>();
 
+                var splittedWords = Regex.Split(text, @"[\r|\t|\n|\p{P}|\p{S}|\p{Z}]");
 
-                var splittedWords = Regex.Split(text, @"[\r|\t|\p{P}|\p{S}|\p{Z}]");
-
-                var splittedWordsFirstHalf = new string[splittedWords.Length / 2] ;
-
-                for (var countWords = 1; countWords < splittedWords.Length / 2; countWords++)
-                {
-                    splittedWordsFirstHalf[countWords] = splittedWords[countWords];
-                }
-
-                var splittedWordsSecondHalf = new string[splittedWords.Length / 2 + 1];
-
-                for (var countWords = splittedWords.Length / 2; countWords < splittedWords.Length; countWords++)
-                {
-                    splittedWordsSecondHalf[countWords - splittedWords.Length / 2] = splittedWords[countWords];
-                }
-
-
-                foreach (var word in splittedWordsFirstHalf)
+                foreach (var word in splittedWords)
                 {
                     if (!String.IsNullOrEmpty(word) && word.Length > 2)
-                        wordsFirstHalf.Add(word);
+                        words.Add(word);
                 }
 
-                foreach (var word in splittedWordsSecondHalf)
-                {
-                    if (!String.IsNullOrEmpty(word) && word.Length > 2)
-                        wordsSecondHalf.Add(word);
-                }
-
-                return (wordsFirstHalf, wordsSecondHalf);
+                return words;
             }
 
-            public ConcurrentDictionary<string, int> SearchTriplets(ArrayList wordsFirstHalf, ArrayList wordsSecondHalf)
+            public void SearchTriplets(IEnumerable<string> words, ref ConcurrentDictionary<string, int> tripletsTable)
             {
-                var tripletsTable = new ConcurrentDictionary<string, int>();
-
                 string triplet = "";
 
-                Thread myThread = new Thread(AddingWordsInSecondThread);
-                myThread.Start();
-
-                void AddingWordsInSecondThread()
-                {
-                    foreach (string word in wordsFirstHalf)
-                    {
-                        for (int position = 0; position < (word.Length - 2); position++)
-                        {
-                            triplet = word.Substring(position, 3);
-                            tripletsTable.AddOrUpdate(triplet, 1, (key, oldValue) => oldValue + 1);
-                        }
-                    }
-                }
-
-                foreach (string word in wordsSecondHalf)
+                foreach (string word in words)
                 {
                     for (int position = 0; position < (word.Length - 2); position++)
                     {
@@ -128,8 +103,6 @@ namespace testtest
                         tripletsTable.AddOrUpdate(triplet, 1, (key, oldValue) => oldValue + 1);
                     }
                 }
-
-                return tripletsTable;
             }
         }
     }
