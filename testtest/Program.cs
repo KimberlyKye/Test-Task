@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Linq;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
-using System.Threading;
+using System.Threading.Tasks;
 
 
 namespace testtest
 {
     class MainClass
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             Console.Write("Enter path of file: ");
             var path = Console.ReadLine();
@@ -27,24 +26,24 @@ namespace testtest
             {
                 reader = new StreamReader(path);
                 var text = reader.ReadToEnd();
+                var wordCountForThread = 100;
 
                 TripletsProcessing tripletsProcessing = new TripletsProcessing();
                 var tripletsTable = new ConcurrentDictionary<string, int>();
 
                 var words = tripletsProcessing.SplitText(text);
-                var wordsFirstHalf = words.Take(words.Count / 2);
-                var wordsSecondHalf = words.Skip(words.Count / 2).Take(words.Count / 2);
 
+                int threadCount = (int)Math.Ceiling((double)words.Count / wordCountForThread);
+                Task[] tasks = new Task[threadCount];
 
-                tripletsProcessing.SearchTriplets(wordsFirstHalf, ref tripletsTable);
-
-                Thread secondThreadForSearchingTriplets = new Thread(AddingWordsInSecondThread);
-                secondThreadForSearchingTriplets.Start();
-
-                void AddingWordsInSecondThread()
+                for (int i = 0; i < threadCount; i++)
                 {
-                    tripletsProcessing.SearchTriplets(wordsSecondHalf, ref tripletsTable);
-                };
+                    var wordsForThread = words.Skip(i * wordCountForThread).Take(wordCountForThread);
+                    int j = i;
+                    tasks[j] = Task.Run(() => tripletsProcessing.SearchTriplets(wordsForThread, ref tripletsTable));
+                }
+
+                await Task.WhenAll(tasks);
 
                 var sortedTripletsTable = from tripletPair in tripletsTable
                                           orderby tripletPair.Value descending
@@ -55,8 +54,6 @@ namespace testtest
                 {
                     Console.WriteLine($"Triplet \"{tripletWithCount.Key}\" is using {tripletWithCount.Value} times");
                 }
-
-
             }
             catch (FileNotFoundException ex)
             {
@@ -69,13 +66,10 @@ namespace testtest
 
             stopwatch.Stop();
             Console.Write("\n The program's working time is {0} ms", stopwatch.ElapsedMilliseconds);
-
-
         }
 
         class TripletsProcessing
         {
-
             public List<string> SplitText(string text)
             {
                 var words = new List<string>();
